@@ -16,7 +16,7 @@
 # under the License.
 #
 
-# Basic Airflow cluster configuration for CeleryExecutor with Redis and PostgreSQL.
+# Basic Airflow cluster configuration for CeleryExecutor with Redis and MySql.
 #
 # WARNING: This configuration is for local development. Do not use it in a production deployment.
 #
@@ -275,4 +275,4 @@ services:
         condition: service_completed_successfully
 
 volumes:
-  postgres-db-volume:
+  mysql-db-volume:
