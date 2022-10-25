@@ -161,7 +161,7 @@ services:
       airflow-init:
         condition: service_completed_successfully
        
-    airflow-init:
+  airflow-init:
     <<: *airflow-common
     entrypoint: /bin/bash
     # yamllint disable rule:line-length
