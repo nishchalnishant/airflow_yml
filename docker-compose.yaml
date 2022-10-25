@@ -47,15 +47,17 @@ x-airflow-common: &airflow-common
   # build: .
   environment: &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: CeleryExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: mysql+pymysql://airflow:airflow@mysql/airflow
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: mysql://root:airflow@mysql:3306/airflow
     # For backward compatibility, with Airflow <2.3
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: mysql+pymysql://airflow:airflow@mysql/airflow
-    AIRFLOW__CELERY__RESULT_BACKEND: db+mysql://airflow:airflow@mysql/airflow
-    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+    AIRFLOW__CELERY__RESULT_BACKEND: db+mysql://root:airflow@mysql:3306/airflow
+    AIRFLOW__CELERY__BROKER_URL: sqla+mysql://root:airflow@mysql:3306/airflow
     AIRFLOW__CORE__FERNET_KEY: ""
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__CORE__LOAD_EXAMPLES: "true"
     AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
+    AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "False"
     _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
   volumes:
     - ./dags:/opt/airflow/dags
@@ -65,35 +67,25 @@ x-airflow-common: &airflow-common
 
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
-    redis:
-      condition: service_healthy
     mysql:
       condition: service_healthy
 
 services:
   mysql:
-    image: mysql:8
+    image: mysql:5.7
     environment:
+      MYSQL_ROOT_PASSWORD: airflow
       MYSQL_USER: airflow
       MYSQL_PASSWORD: airflow
-      MYSQL_DB: airflow
+      MYSQL_DATABASE: airflow
     volumes:
-      - mysql-db-volume:/var/lib/mysql/data
+      - ./data:/var/lib/mysql
+    ports:
+      - "3306:3306"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 5s
       retries: 5
-    restart: always
-
-  redis:
-    image: redis:latest
-    expose:
-      - 6379
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 30s
-      retries: 50
     restart: always
 
   airflow-webserver:
@@ -202,6 +194,3 @@ services:
       <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
-
-volumes:
-  mysql-db-volume:
