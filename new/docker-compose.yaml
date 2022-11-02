@@ -1,6 +1,6 @@
 # docker-compose.yaml for airflow with mysql with airflow server and scheduler running in separate containers
 
-version: "2"
+version: "3"
 services:
   mysql:
     image: mysql:5.7
