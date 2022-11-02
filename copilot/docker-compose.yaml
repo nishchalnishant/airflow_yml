@@ -51,7 +51,7 @@ x-airflow-common: &airflow-common
     # For backward compatibility, with Airflow <2.3
     AIRFLOW__CORE__SQL_ALCHEMY_CONN: mysql+pymysql://airflow:airflow@mysql/airflow
     AIRFLOW__CELERY__RESULT_BACKEND: db+mysql://root:airflow@mysql:3306/airflow
-    AIRFLOW__CELERY__BROKER_URL: sqla+mysql://root:airflow@mysql:3306/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
     AIRFLOW__CORE__FERNET_KEY: ""
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
     AIRFLOW__CORE__LOAD_EXAMPLES: "true"
@@ -67,6 +67,8 @@ x-airflow-common: &airflow-common
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on: &airflow-common-depends-on
     mysql:
+      condition: service_healthy
+    redis:
       condition: service_healthy
 
 services:
@@ -86,17 +88,28 @@ services:
       timeout: 20s
       retries: 10
     restart: always
+    
+  redis:
+    image: redis:latest
+    expose:
+      - 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 30s
+      retries: 50
+    restart: always
 
   airflow-webserver:
     <<: *airflow-common
     command: webserver
     ports:
-      - 8088:8080
+      - 8088:8088
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8088/health"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 30s
+      retries: 50
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -112,9 +125,9 @@ services:
           "CMD-SHELL",
           'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"',
         ]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 30s
+      retries: 50
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
@@ -128,9 +141,9 @@ services:
       test:
         - "CMD-SHELL"
         - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 30s
+      retries: 50
     environment:
       <<: *airflow-common-env
       # Required to handle warm shutdown of the celery workers properly
@@ -151,9 +164,9 @@ services:
           "CMD-SHELL",
           'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"',
         ]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      interval: 5s
+      timeout: 30s
+      retries: 50
     restart: always
     depends_on:
       <<: *airflow-common-depends-on
