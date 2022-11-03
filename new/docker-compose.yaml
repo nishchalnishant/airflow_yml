@@ -1,30 +1,50 @@
-version: "3"
+version: '2'
+
 services:
-  webserver:
-    build:
-      context: ./app/
-      dockerfile: DockerFile
-    image: puckel/docker-airflow:latest
-    container_name: test_container_test
+  mysql:
+    image: bitnami/mysql:5.7
     volumes:
-      - /home/ubuntu/dags1/:/usr/local/airflow/dags
-    ports:
-      - 8080:8080
-    networks:
-      - backend
-    restart: always
-    depends_on:
-      - mysqldb
-  mysqldb:
-    image: mysql:5.7
+      - 'mysql_data:/bitnami/mysql'
     environment:
-      MYSQL_ROOT_PASSWORD: helloworld
-      MYSQL_DATABASE: testdb
-    container_name: mysql_container_test
+      - MYSQL_DATABASE=bitnami_airflow
+      - MYSQL_USERNAME=bn_airflow
+      - MYSQL_PASSWORD=bitnami1
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+  redis:
+    image: docker.io/bitnami/redis:7.0
+    volumes:
+      - 'redis_data:/bitnami'
+    environment:
+      # ALLOW_EMPTY_PASSWORD is recommended only for development.
+      - ALLOW_EMPTY_PASSWORD=yes
+  airflow-scheduler:
+    image: docker.io/bitnami/airflow-scheduler:2
+    environment:
+      - AIRFLOW_DATABASE_NAME=bitnami_airflow
+      - AIRFLOW_DATABASE_USERNAME=bn_airflow
+      - AIRFLOW_DATABASE_PASSWORD=bitnami1
+      - AIRFLOW_EXECUTOR=CeleryExecutor
+      - AIRFLOW_WEBSERVER_HOST=airflow
+  airflow-worker:
+    image: docker.io/bitnami/airflow-worker:2
+    environment:
+      - AIRFLOW_DATABASE_NAME=bitnami_airflow
+      - AIRFLOW_DATABASE_USERNAME=bn_airflow
+      - AIRFLOW_DATABASE_PASSWORD=bitnami1
+      - AIRFLOW_EXECUTOR=CeleryExecutor
+      - AIRFLOW_WEBSERVER_HOST=airflow
+  airflow:
+    image: docker.io/bitnami/airflow:2
+    environment:
+      - AIRFLOW_DATABASE_NAME=bitnami_airflow
+      - AIRFLOW_DATABASE_USERNAME=bn_airflow
+      - AIRFLOW_DATABASE_PASSWORD=bitnami1
+      - AIRFLOW_EXECUTOR=CeleryExecutor
     ports:
-      - 3306:3306
-    networks:
-      - backend
-networks:
-  backend:
-    driver: "bridge"
+      - '8080:8080'
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
